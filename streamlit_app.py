@@ -65,7 +65,7 @@ def parse_time_range(time_input):
     
     return None, None
 
-def download_youtube_section(url, time_range, progress_callback=None, status_callback=None):
+def download_youtube_section(url, time_range, browser_choice=None, progress_callback=None, status_callback=None):
     """
     YouTubeの指定された時間範囲をダウンロードする
     """
@@ -108,6 +108,10 @@ def download_youtube_section(url, time_range, progress_callback=None, status_cal
         'extract_flat': False,
         'progress_hooks': [progress_hook],
     }
+    
+    # ブラウザからクッキーを取得
+    if browser_choice and browser_choice != "使用しない":
+        ydl_opts['cookiesfrombrowser'] = (browser_choice.lower(), None, None, None)
     
     try:
         if status_callback:
@@ -211,6 +215,19 @@ def main():
         help="MMSS-MMSS形式（0430-0600）またはMM:SS-MM:SS形式（4:30-6:00）で入力"
     )
     
+    # ブラウザ選択（Bot対策）
+    st.subheader("🍪 Bot対策設定")
+    browser_options = ["使用しない", "Chrome", "Firefox", "Safari", "Edge"]
+    browser_choice = st.selectbox(
+        "ブラウザからクッキーを取得",
+        browser_options,
+        help="YouTubeでBot判定される場合は、普段使用しているブラウザを選択してください"
+    )
+    st.session_state.browser_choice = browser_choice
+    
+    if browser_choice != "使用しない":
+        st.info(f"💡 {browser_choice}ブラウザのクッキーを使用してBot判定を回避します")
+    
     # ダウンロードボタン
     if st.button("📥 ダウンロード開始", type="primary", disabled=st.session_state.is_downloading):
         if not url:
@@ -294,7 +311,7 @@ def main():
             
             # ダウンロード実行
             filename, success = download_youtube_section(
-                url, time_range,
+                url, time_range, st.session_state.get('browser_choice', None),
                 progress_callback=update_progress,
                 status_callback=update_status
             )
@@ -358,6 +375,11 @@ def main():
         - 最大1080pの高画質でダウンロードします
         - 指定時間範囲のみをダウンロードするため高速です
         - ダウンロード完了後、「ファイルをダウンロード」ボタンから保存先を選択できます
+        
+        ### Bot対策について
+        - YouTubeで「Sign in to confirm you're not a bot」エラーが出る場合
+        - 普段YouTubeを使用しているブラウザを選択してください
+        - ブラウザのクッキーが自動的に使用され、Bot判定を回避できます
         """)
 
 if __name__ == "__main__":
