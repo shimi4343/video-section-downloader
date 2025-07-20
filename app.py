@@ -1,115 +1,93 @@
-# -*- coding: utf-8 -*-
-import yt_dlp
-import os
-import re
 import subprocess
-import tempfile
+import sys
+import re
 
-def download_youtube_section(url, start_time, end_time):
-    """
-    YouTubeの指定された時間範囲をダウンロードする
-    
-    Args:
-        url (str): YouTube URL
-        start_time (str): 開始時間 (MM:SS形式、空欄の場合は動画全体)
-        end_time (str): 終了時間 (MM:SS形式、空欄の場合は動画全体)
-    """
-    
-    def time_to_seconds(time_str):
-        """MM:SS形式の時間を秒数に変換"""
-        if ':' in time_str:
-            parts = time_str.split(':')
-            if len(parts) == 2:
-                minutes, seconds = map(int, parts)
-                return minutes * 60 + seconds
-            elif len(parts) == 3:
-                hours, minutes, seconds = map(int, parts)
-                return hours * 3600 + minutes * 60 + seconds
-        return int(time_str)
-    
-    def sanitize_filename(filename):
-        """ファイル名から無効な文字を除去"""
-        return re.sub(r'[<>:"/\\|?*]', '_', filename)
-    
-    def get_unique_filename(filename):
-        """既存ファイルと重複しない一意のファイル名を生成"""
-        if not os.path.exists(filename):
-            return filename
-        
-        name, ext = os.path.splitext(filename)
-        counter = 2
-        
-        while os.path.exists(f"{name}_v{counter}{ext}"):
-            counter += 1
-        
-        return f"{name}_v{counter}{ext}"
-    
-    # yt-dlpの設定
-    ydl_opts = {
-        'noplaylist': True,
-        'extract_flat': False,
-    }
-    
-    try:
-        # 動画の情報を取得
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=False)
-            title = sanitize_filename(info.get('title', 'video'))
-        
-        # 時間指定があるかチェック
-        if start_time.strip() and end_time.strip():
-            # ファイル名を生成（時間範囲付き）
-            start_formatted = start_time.replace(':', '_')
-            end_formatted = end_time.replace(':', '_')
-            filename = f"{title}_{start_formatted}-{end_formatted}.mp4"
-            filename = get_unique_filename(filename)
-            
-            # 時間を秒数に変換
-            start_seconds = time_to_seconds(start_time)
-            end_seconds = time_to_seconds(end_time)
-            
-            # 指定時間範囲のみダウンロード
-            download_opts = {
-                'format': 'bestvideo[height<=1080][ext=mp4]+bestaudio[ext=m4a]/best[height<=1080][ext=mp4]/best[ext=mp4]',
-                'outtmpl': filename,
-                'noplaylist': True,
-                'download_ranges': yt_dlp.utils.download_range_func(None, [(start_seconds, end_seconds)]),
-            }
-            
-            print(f"指定時間範囲({start_time}-{end_time})をダウンロード中...")
-            with yt_dlp.YoutubeDL(download_opts) as ydl:
-                ydl.download([url])
-        else:
-            # ファイル名を生成（全体ダウンロード）
-            filename = f"{title}.mp4"
-            filename = get_unique_filename(filename)
-            
-            # 全体ダウンロード設定（分離音声動画で最高品質）
-            download_opts = {
-                'format': 'bestvideo[height<=1080][ext=mp4]+bestaudio[ext=m4a]/best[height<=1080][ext=mp4]/best[ext=mp4]',
-                'outtmpl': filename,
-                'noplaylist': True,
-            }
-            
-            with yt_dlp.YoutubeDL(download_opts) as ydl:
-                ydl.download([url])
-        
-        print(f"ダウンロード完了: {filename}")
-        
-    except Exception as e:
-        print(f"エラーが発生しました: {e}")
+def validate_time_format(time_str):
+    """時間フォーマットを検証（00:00, 00:12, 01:22:33形式）"""
+    pattern = r'^\d{1,2}:\d{2}(:\d{2})?$'
+    return re.match(pattern, time_str) is not None
+
+def validate_youtube_url(url):
+    """YouTubeのURLを検証"""
+    youtube_patterns = [
+        r'https?://(?:www\.)?youtube\.com/watch\?v=[\w-]+',
+        r'https?://youtu\.be/[\w-]+',
+        r'https?://(?:www\.)?youtube\.com/embed/[\w-]+'
+    ]
+    return any(re.match(pattern, url) for pattern in youtube_patterns)
 
 def main():
-    """メイン関数"""
-    print("YouTube区間ダウンローダー")
-    print("時間形式: MM:SS (例: 01:30)")
-    print("※開始時間・終了時間を空欄にすると動画全体をダウンロードします")
+    print("YouTube動画ダウンローダー")
+    print("=" * 30)
     
-    url = input("YouTube URL: ")
-    start_time = input("開始時間 (MM:SS、空欄で全体): ")
-    end_time = input("終了時間 (MM:SS、空欄で全体): ")
+    # YouTubeのURL入力
+    while True:
+        youtube_url = input("YouTubeのURLを入力してください: ").strip()
+        if validate_youtube_url(youtube_url):
+            break
+        print("無効なYouTubeのURLです。正しいURLを入力してください。")
     
-    download_youtube_section(url, start_time, end_time)
+    # ダウンロード区間の入力
+    while True:
+        start_time = input("開始時間を入力してください（例: 00:00, 01:30, 01:22:33）: ").strip()
+        if validate_time_format(start_time):
+            break
+        print("無効な時間フォーマットです。00:00や01:22:33の形式で入力してください。")
+    
+    while True:
+        end_time = input("終了時間を入力してください（例: 00:10, 02:30, 01:25:45）: ").strip()
+        if validate_time_format(end_time):
+            break
+        print("無効な時間フォーマットです。00:00や01:22:33の形式で入力してください。")
+    
+    # ダウンロードセクションの文字列を作成
+    download_sections = f"*{start_time}-{end_time}"
+    
+    # yt-dlpコマンドを構築
+    cmd = [
+        "yt-dlp",
+        "--cookies-from-browser", "chrome",
+        "-S", "codec:avc:aac,res:1080,fps:60,hdr:sdr",
+        "--download-sections", download_sections,
+        "--force-keyframes-at-cuts",
+        "-f", "bv+ba",
+        "-o", "%(title)s_%(height)s_%(fps)s_%(vcodec.:4)s_(%(id)s).%(ext)s",
+        youtube_url
+    ]
+    
+    print(f"\n実行するコマンド:")
+    # 表示用にコマンドの引数を引用符で囲む
+    cmd_display = []
+    for arg in cmd:
+        if arg == "codec:avc:aac,res:1080,fps:60,hdr:sdr":
+            cmd_display.append(f'"{arg}"')
+        elif arg == "bv+ba":
+            cmd_display.append(f'"{arg}"')
+        elif arg == "%(title)s_%(height)s_%(fps)s_%(vcodec.:4)s_(%(id)s).%(ext)s":
+            cmd_display.append(f'"{arg}"')
+        elif arg == download_sections:
+            cmd_display.append(f'"{arg}"')
+        elif arg == youtube_url:
+            cmd_display.append(f'"{arg}"')
+        else:
+            cmd_display.append(arg)
+    print(" ".join(cmd_display))
+    print("\nダウンロードを開始します...")
+    
+    try:
+        # yt-dlpコマンドを実行
+        result = subprocess.run(cmd, check=True, capture_output=True, text=True)
+        print("ダウンロードが完了しました！")
+        if result.stdout:
+            print(f"出力: {result.stdout}")
+    except subprocess.CalledProcessError as e:
+        print(f"エラーが発生しました: {e}")
+        if e.stderr:
+            print(f"エラー詳細: {e.stderr}")
+        sys.exit(1)
+    except FileNotFoundError:
+        print("yt-dlpが見つかりません。yt-dlpがインストールされているか確認してください。")
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()
