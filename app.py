@@ -118,9 +118,6 @@ def main():
         ])
         print(f"指定区間: {normalized_start} ～ {normalized_end}")
         
-        # クラウド環境では警告を表示
-        if is_streamlit_cloud:
-            print("⚠️ クラウド環境ではffmpegが利用できないため、エラーが発生する可能性があります。")
     else:
         print("動画全体をダウンロードします")
     
