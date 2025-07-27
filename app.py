@@ -87,24 +87,27 @@ def main():
         "-S", "codec:avc:aac,res:1080,fps:60,hdr:sdr"
     ]
     
-    # ローカル環境でのみクッキーオプションを追加（Streamlitクラウドでは除外）
+    # Streamlitクラウド環境の検出
+    is_streamlit_cloud = False
     try:
-        # Streamlitクラウド環境の検出
         is_streamlit_cloud = (
             "STREAMLIT_SHARING" in os.environ or 
             "streamlit" in os.environ.get("HOME", "").lower() or
             "appuser" in os.environ.get("HOME", "").lower() or
             os.path.exists("/home/appuser")
         )
-        
-        if not is_streamlit_cloud:
-            cmd.extend(["--cookies-from-browser", "chrome"])
     except Exception:
-        # エラーが発生した場合はクッキーオプションを使用しない
         pass
     
-    # 時間指定がある場合のみセクションダウンロードを追加
-    if start_time and end_time:
+    # ローカル環境でのみクッキーオプションを追加
+    if not is_streamlit_cloud:
+        try:
+            cmd.extend(["--cookies-from-browser", "chrome"])
+        except Exception:
+            pass
+    
+    # 時間指定がある場合のみセクションダウンロードを追加（クラウド環境では無効）
+    if start_time and end_time and not is_streamlit_cloud:
         # 時間を正規化してからダウンロードセクションの文字列を作成
         normalized_start = normalize_time_format(start_time)
         normalized_end = normalize_time_format(end_time)
@@ -114,6 +117,8 @@ def main():
             "--force-keyframes-at-cuts"
         ])
         print(f"指定区間: {normalized_start} ～ {normalized_end}")
+    elif start_time and end_time and is_streamlit_cloud:
+        print("⚠️ クラウド環境では技術的制限により、動画全体をダウンロードします。")
     else:
         print("動画全体をダウンロードします")
     

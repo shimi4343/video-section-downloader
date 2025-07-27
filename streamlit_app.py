@@ -148,24 +148,27 @@ def main():
             "-S", "codec:avc:aac,res:1080,fps:60,hdr:sdr"
         ]
         
-        # ローカル環境でのみクッキーオプションを追加（Streamlitクラウドでは除外）
+        # Streamlitクラウド環境の検出
+        is_streamlit_cloud = False
         try:
-            # Streamlitクラウド環境の検出
             is_streamlit_cloud = (
                 "STREAMLIT_SHARING" in os.environ or 
                 "streamlit" in os.environ.get("HOME", "").lower() or
                 "appuser" in os.environ.get("HOME", "").lower() or
                 os.path.exists("/home/appuser")
             )
-            
-            if not is_streamlit_cloud:
-                cmd.extend(["--cookies-from-browser", "chrome"])
         except Exception:
-            # エラーが発生した場合はクッキーオプションを使用しない
             pass
         
-        # 時間指定がある場合のみセクションダウンロードを追加
-        if start_time.strip() and end_time.strip():
+        # ローカル環境でのみクッキーオプションを追加
+        if not is_streamlit_cloud:
+            try:
+                cmd.extend(["--cookies-from-browser", "chrome"])
+            except Exception:
+                pass
+        
+        # 時間指定がある場合のみセクションダウンロードを追加（クラウド環境では無効）
+        if start_time.strip() and end_time.strip() and not is_streamlit_cloud:
             # 時間を正規化してからダウンロードセクションの文字列を作成
             normalized_start = normalize_time_format(start_time)
             normalized_end = normalize_time_format(end_time)
@@ -174,6 +177,9 @@ def main():
                 "--download-sections", download_sections,
                 "--force-keyframes-at-cuts"
             ])
+        elif start_time.strip() and end_time.strip() and is_streamlit_cloud:
+            # クラウド環境では時間指定があっても全体をダウンロード
+            st.warning("⚠️ Streamlitクラウド環境では技術的制限により、動画全体をダウンロードします。")
         
         cmd.extend([
             "-f", "bv+ba",
@@ -183,7 +189,11 @@ def main():
         
         # コマンド表示
         st.subheader("実行するコマンド")
-        download_sections_for_display = f"*{normalized_start}-{normalized_end}" if start_time.strip() and end_time.strip() else ""
+        download_sections_for_display = ""
+        if start_time.strip() and end_time.strip() and not is_streamlit_cloud:
+            normalized_start = normalize_time_format(start_time)
+            normalized_end = normalize_time_format(end_time)
+            download_sections_for_display = f"*{normalized_start}-{normalized_end}"
         formatted_cmd = format_command_display(cmd, download_sections_for_display, youtube_url)
         st.code(formatted_cmd, language="bash")
         
