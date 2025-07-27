@@ -148,12 +148,20 @@ def main():
             "-S", "codec:avc:aac,res:1080,fps:60,hdr:sdr"
         ]
         
-        # ローカル環境でのみクッキーオプションを追加
+        # ローカル環境でのみクッキーオプションを追加（Streamlitクラウドでは除外）
         try:
-            import platform
-            if platform.system() != "Linux" or "STREAMLIT_SHARING" not in os.environ:
+            # Streamlitクラウド環境の検出
+            is_streamlit_cloud = (
+                "STREAMLIT_SHARING" in os.environ or 
+                "streamlit" in os.environ.get("HOME", "").lower() or
+                "appuser" in os.environ.get("HOME", "").lower() or
+                os.path.exists("/home/appuser")
+            )
+            
+            if not is_streamlit_cloud:
                 cmd.extend(["--cookies-from-browser", "chrome"])
         except Exception:
+            # エラーが発生した場合はクッキーオプションを使用しない
             pass
         
         # 時間指定がある場合のみセクションダウンロードを追加
