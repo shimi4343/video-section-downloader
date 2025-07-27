@@ -6,6 +6,7 @@ import os
 import glob
 import tempfile
 import shutil
+import platform
 
 def validate_time_format(time_str):
     """時間フォーマットを検証（00:00, 00:12, 01:22:33, 0000, 000010形式）"""
@@ -144,9 +145,16 @@ def main():
         # yt-dlpコマンドを構築
         cmd = [
             "yt-dlp",
-            "--cookies-from-browser", "chrome",
             "-S", "codec:avc:aac,res:1080,fps:60,hdr:sdr"
         ]
+        
+        # ローカル環境でのみクッキーオプションを追加
+        try:
+            import platform
+            if platform.system() != "Linux" or "STREAMLIT_SHARING" not in os.environ:
+                cmd.extend(["--cookies-from-browser", "chrome"])
+        except Exception:
+            pass
         
         # 時間指定がある場合のみセクションダウンロードを追加
         if start_time.strip() and end_time.strip():
