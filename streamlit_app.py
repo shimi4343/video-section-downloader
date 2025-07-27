@@ -167,8 +167,8 @@ def main():
             except Exception:
                 pass
         
-        # 時間指定がある場合のみセクションダウンロードを追加（クラウド環境では無効）
-        if start_time.strip() and end_time.strip() and not is_streamlit_cloud:
+        # 時間指定がある場合のみセクションダウンロードを追加
+        if start_time.strip() and end_time.strip():
             # 時間を正規化してからダウンロードセクションの文字列を作成
             normalized_start = normalize_time_format(start_time)
             normalized_end = normalize_time_format(end_time)
@@ -177,9 +177,10 @@ def main():
                 "--download-sections", download_sections,
                 "--force-keyframes-at-cuts"
             ])
-        elif start_time.strip() and end_time.strip() and is_streamlit_cloud:
-            # クラウド環境では時間指定があっても全体をダウンロード
-            st.warning("⚠️ Streamlitクラウド環境では技術的制限により、動画全体をダウンロードします。")
+            
+            # クラウド環境では警告を表示
+            if is_streamlit_cloud:
+                st.warning("⚠️ Streamlitクラウド環境ではffmpegが利用できないため、部分ダウンロードでエラーが発生する可能性があります。")
         
         cmd.extend([
             "-f", "bv+ba",
@@ -190,7 +191,7 @@ def main():
         # コマンド表示
         st.subheader("実行するコマンド")
         download_sections_for_display = ""
-        if start_time.strip() and end_time.strip() and not is_streamlit_cloud:
+        if start_time.strip() and end_time.strip():
             normalized_start = normalize_time_format(start_time)
             normalized_end = normalize_time_format(end_time)
             download_sections_for_display = f"*{normalized_start}-{normalized_end}"

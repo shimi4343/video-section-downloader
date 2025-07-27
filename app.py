@@ -106,8 +106,8 @@ def main():
         except Exception:
             pass
     
-    # 時間指定がある場合のみセクションダウンロードを追加（クラウド環境では無効）
-    if start_time and end_time and not is_streamlit_cloud:
+    # 時間指定がある場合のみセクションダウンロードを追加
+    if start_time and end_time:
         # 時間を正規化してからダウンロードセクションの文字列を作成
         normalized_start = normalize_time_format(start_time)
         normalized_end = normalize_time_format(end_time)
@@ -117,8 +117,10 @@ def main():
             "--force-keyframes-at-cuts"
         ])
         print(f"指定区間: {normalized_start} ～ {normalized_end}")
-    elif start_time and end_time and is_streamlit_cloud:
-        print("⚠️ クラウド環境では技術的制限により、動画全体をダウンロードします。")
+        
+        # クラウド環境では警告を表示
+        if is_streamlit_cloud:
+            print("⚠️ クラウド環境ではffmpegが利用できないため、エラーが発生する可能性があります。")
     else:
         print("動画全体をダウンロードします")
     
