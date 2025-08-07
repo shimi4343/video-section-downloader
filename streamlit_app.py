@@ -148,20 +148,22 @@ def main():
             "-S", "codec:avc:aac,res:1080,fps:60,hdr:sdr"
         ]
         
-        # Streamlitクラウド環境の検出
-        is_streamlit_cloud = False
+        # クラウド環境（Streamlit Cloud、Railway等）の検出
+        is_cloud_environment = False
         try:
-            is_streamlit_cloud = (
+            is_cloud_environment = (
                 "STREAMLIT_SHARING" in os.environ or 
                 "streamlit" in os.environ.get("HOME", "").lower() or
                 "appuser" in os.environ.get("HOME", "").lower() or
-                os.path.exists("/home/appuser")
+                os.path.exists("/home/appuser") or
+                "RAILWAY_ENVIRONMENT" in os.environ or
+                "PORT" in os.environ
             )
         except Exception:
             pass
         
         # ローカル環境でのみクッキーオプションを追加
-        if not is_streamlit_cloud:
+        if not is_cloud_environment:
             try:
                 cmd.extend(["--cookies-from-browser", "chrome"])
             except Exception:
